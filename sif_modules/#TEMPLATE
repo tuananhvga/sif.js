@@ -1,0 +1,12 @@
+==== BASE ACTION ====
+
+var defer = q.defer();
+log.verbose(data);
+COMMON.checkLogin(data._headers["user-id"], data._headers.authorize.token).then(function(user_id){
+	
+}).catch(function(e){
+	defer.reject(e);
+});
+return defer.promise;
+
+====================
