@@ -42,7 +42,7 @@
 			(SELECT count(*) FROM unit WHERE owner_id=users.user_id AND removed=0) as unit_cnt, \
 			unit.unit_owning_user_id,  unit_id, unit.exp as unit_exp, unit.next_exp, unit.level as unit_level, unit.max_level, \
 			unit.rank, unit.max_rank, unit.love, unit.max_love, unit.unit_skill_level, unit.max_hp, unit.favorite_flag, unit.display_rank, unit.unit_skill_exp, \
-			unit.unit_removable_skill_capacity \
+			unit.unit_removable_skill_capacity, users.background_id, users.award_id \
 		FROM users \
 			JOIN team ON users.user_id=team.user_id AND team.main=1 \
 			JOIN team_slot ON team.team_id AND team_slot.slot_id=5 \
@@ -88,13 +88,13 @@
 						is_level_max: d.level>=d.max_level,
 						is_rank_max: d.rank>=d.max_rank,
 						is_skill_level_max: (d.skill_level==0||d.skill_level>=8),
-						setting_award_id: 23,
+						setting_award_id: d.award_id,
 						removable_skill_ids: []
 					},
 					is_alliance: false,
 					friend_status: 0,
-					setting_award_id: 23,
-					setting_background_id: 1
+					setting_award_id: d.award_id,
+					setting_background_id: d.background_id
 				}
 				
 				defer.resolve({status: 200, result: result});
