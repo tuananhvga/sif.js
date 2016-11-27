@@ -1,4 +1,4 @@
-const q = require("q"), http = require("http"), crypto = require("crypto"), formidable = require("formidable"), fs = require("fs"),querystring = require('querystring'), extend = require("extend");
+const q = require("q"), http = require("http"), crypto = require("crypto"), formidable = require("formidable"), fs = require("fs"),querystring = require('querystring'), extend = require("extend"), readline = require("readline");
 const libs = {
 	log: require("./libs/log.js"),
 };
@@ -24,7 +24,6 @@ const SERVER_VERSION = "20120129";
 const CLIENT_VERSION = "8.0.59";
 const BUNDLE_VERSION = "3.1.3";
 const APPLICATION_ID = 834030294;
-
 
 const XMC_HMAC = fs.readFileSync("./HMAC_SECRET.KEY");
 
@@ -256,9 +255,6 @@ var server = http.createServer(function(request,response){
 					}
 				}
 			}
-			
-		
-			
 		});
 	}else if (request.url.startsWith("/download/")){
 		
@@ -277,3 +273,32 @@ DB.init().then(function(){
 	log.fatal(e);
 	process.exit(1);
 });
+
+const readLine = readline.createInterface({
+	input: process.stdin,
+	output: process.stdout
+});
+
+function readlineSetup(){
+	readLine.question('',(answer)=>{
+		switch(answer){
+			case "": // No Command for Quick Restart during Development :)
+			case "r":
+			case "restart":{
+				log.fatal("Shutdown & Restart");
+				fs.writeFile("./.restart","",function(){
+					setTimeout(function(){
+						readLine.close();
+						process.exit(0);
+					},100);
+				});
+				return;
+			}
+			default: {
+				log.error("Invalid Command");
+			}
+		}
+		readlineSetup();
+	});
+}
+readlineSetup();
