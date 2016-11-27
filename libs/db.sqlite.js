@@ -121,7 +121,7 @@ function buildUserDb(){
 						switch(version){
 							case 0: {
 								querys.push("DROP TABLE IF EXISTS `team`;");
-								querys.push("CREATE TABLE `team`( `user_id` INTEGER NOT NULL, `team_id` INTEGER NOT NULL, `team_name` TEXT, `main` INTEGER NOT NULL DEFAULT 0);");
+								querys.push("CREATE TABLE `team`( `user_id` INTEGER NOT NULL, `team_id` INTEGER NOT NULL, `team_name` TEXT, `main` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(user_id,team_id));");
 								version = 1;
 								break;
 							}
