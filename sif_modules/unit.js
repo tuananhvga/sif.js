@@ -130,6 +130,145 @@
 		});
 		return defer.promise;
 		
+	},
+	deck: function(data){
+		var defer = q.defer();
+		log.verbose(data);
+		
+		COMMON.checkLogin(data._headers["user-id"], data._headers.authorize.token).then(function(user_id){
+			var hasMainTeam = false;
+			var MainTeamID = 1;
+			for(let i=0;i<data.unit_deck_list.length;i++){
+				var t = data.unit_deck_list[i];
+				console.log(t);
+				if (t.main_flag == 1){
+					if (hasMainTeam == false){
+						if (t.unit_deck_detail.length == 9){
+							hasMainTeam = true;
+							MainTeamID = t.unit_deck_id;
+						}
+					}else{
+						defer.reject({status: 403, result: {code: 20001, message: "Multiple Main Teams"}});
+						return;
+					}
+				}				
+			}
+			if (!hasMainTeam){
+				defer.reject({status: 403, result: {code: 20001, message: "No Main Team"}});
+				return;
+			}
+			
+			var allCardsUsed = [];
+			var cardsToInsert = [];
+			for(let i=0;i<data.unit_deck_list.length;i++){
+				var t = data.unit_deck_list[i];
+				
+				if (t.deck_name.length > 10){
+					defer.reject({status: 403, result: {code: 20001, message: "Invalid Team Name"}});
+					return;
+				}
+				
+				if ([1,2,3,4,5,6,7,8,9].indexOf(t.unit_deck_id)<0){
+					defer.reject({status: 403, result: {code: 20001, message: "Invalid Team ID"}});
+					return;
+				}
+				
+				var positionsUsed = [];
+				var cardsUsed = [];
+				for (let j=0;j<t.unit_deck_detail.length;j++){
+					//For each Card on Team
+					var c = t.unit_deck_detail[j];
+					if ([1,2,3,4,5,6,7,8,9].indexOf(c.position)>=0){
+						if (positionsUsed.indexOf(c.position) < 0){
+							positionsUsed.push(c.position);
+							if (typeof c.unit_owning_user_id === "number" && parseInt(c.unit_owning_user_id) === c.unit_owning_user_id){
+								if (cardsUsed.indexOf(c.unit_owning_user_id) < 0){
+									cardsUsed.push(c.unit_owning_user_id);
+									cardsToInsert.push({
+										team_id: t.unit_deck_id,
+										slot_id: c.position,
+										card_id: c.unit_owning_user_id
+									});
+									if (allCardsUsed.indexOf(c.unit_owning_user_id)<0){
+										allCardsUsed.push(c.unit_owning_user_id);
+									}
+								}else{
+									defer.reject({status: 403, result: {code: 20001, message: "Duplicate Card on a Team"}});
+									return;
+								}
+							}else{
+								defer.reject({status: 403, result: {code: 20001, message: "Invalid Card ID"}});
+							}
+						}else{
+							defer.reject({status: 403, result: {code: 20001, message: "Duplicate Position"}});
+							return;
+						}
+						
+					}else{
+						defer.reject({status: 403, result: {code: 20001, message: "Team contains an invalid position."}});
+						return;
+					}
+				}				
+			}
+			
+			DB.get("user","SELECT unit_owning_user_id FROM unit WHERE owner_id=? AND removed=0 AND unit_owning_user_id IN (" + allCardsUsed.join(",") + ")",[user_id]).then(function(d){
+				if (d.length == allCardsUsed.length){
+					
+					var setTeamData = function(index, callback){
+						if (data.unit_deck_list.length > index){
+							var t = data.unit_deck_list[index];
+							
+							DB.run("user","INSERT OR REPLACE into team VALUES (?, ?, ?, ?)",[user_id, t.unit_deck_id, t.deck_name, t.main_flag]).then(function(){
+								setTeamData(index+1, callback);
+							}).catch(function(e){
+								console.log(e);
+								defer.reject({status: 403, result: {code: 20001, message: "Server Error"}});
+								return;
+							});
+						}else{
+							callback();
+						}
+						
+					}
+					
+					setTeamData(0, function(){
+						DB.run("user","DELETE from team_slot WHERE user_id=?",[user_id]).then(function(){
+							
+							var query = "INSERT OR REPLACE INTO team_slot VALUES ";
+							
+							for (var i=0;i<cardsToInsert.length;i++){
+								var c = cardsToInsert[i];
+								if (i!=0){ query += ",\n"; }
+								query += `(${user_id}, ${c.team_id}, ${c.slot_id}, ${c.card_id})`;
+							}
+							query += ";";
+							
+							DB.run("user",query,[]).then(function(){
+								defer.resolve({status: 200, result: []});
+							}).catch(function(e){
+								defer.reject({status: 403, result: {code: 20001, message: "Good Luck, New Account Time 2"}});
+							});
+							
+							
+							
+						}).catch(function(e){
+							defer.reject({status: 403, result: {code: 20001, message: "Good Luck, New Account Time"}});
+						});
+						
+					});
+				}else{
+					defer.reject({status: 403, result: {code: 20001, message: "Invalid Cards on Team"}});
+				}
+			}).catch(function(e){
+				console.log(e);
+				defer.reject({status: 403, result: {code: 20001, message: "Server Error"}});
+			});
+			
+		}).catch(function(e){
+			defer.reject(e);
+		});
+		return defer.promise;
+		
 	}
 	
 	
