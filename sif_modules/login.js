@@ -15,17 +15,14 @@
 		var defer = q.defer();
 		log.verbose(data);
 		DB.first("user", "SELECT user_id FROM users WHERE login_key = ? AND login_passwd = ?", [data.login_key, data.login_passwd]).then(function(userData){
-			
 			if (!userData){
 				defer.resolve({status: 600, result: {error_code: 407}});
 				return;
 			}
-			
 			var token = "";
 			var validCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 			while(token.length<80)
 				token+=validCharacters.charAt(Math.floor(Math.random() * validCharacters.length));
-			
 			DB.run("user", "UPDATE users SET token = ? WHERE login_key = ? AND login_passwd = ?", [token, data.login_key, data.login_passwd]).then(function(){
 				defer.resolve({status: 200, result: {
 					authorize_token: token, 
@@ -34,13 +31,7 @@
 					server_timestamp: Math.floor(Date.now()/1000)
 				}});
 			});
-
-		});
-		
-		
-		
-		
-		
+		});		
 		return defer.promise;	
 	},
 	startup: function(data){
@@ -52,28 +43,17 @@
 								
 				DB.get("user","SELECT user_id FROM users WHERE login_key=?",data.login_key).then(function(d){
 					if (d.length == 0){
-						
-						
-						
-						
 						DB.run("user", "INSERT INTO users (login_key, login_passwd) VALUES (?, ?)", [data.login_key, data.login_passwd]).then(function(){
 							DB.get("user", "SELECT user_id FROM users WHERE login_key = ? AND login_passwd = ?", [ data.login_key, data.login_passwd ]).then(function(newUser){
-								
 								if (newUser.length == 1){
-									
-									
-										
 										defer.resolve({status: 200, result: {
 											login_key: data.login_key,
 											login_passwd: data.login_passwd,
 											user_id: newUser[0].user_id
 										}});
-		
-									
 								}else{
 									defer.reject("Account Creation Failed");
 								}
-								
 							});
 						}).catch(function(e){
 							defer.reject(e);
@@ -219,6 +199,7 @@ DELETE FROM album WHERE user_id=${user_id};
 									
 									//Create Team
 									var teamQuery = `
+UPDATE users SET partner = ${list[4]} WHERE user_id=${user_id};
 INSERT INTO team VALUES (${user_id}, 1, "Team A", 1);
 INSERT INTO team_slot VALUES
 	(${user_id}, 1, 1, ${list[0]}),
