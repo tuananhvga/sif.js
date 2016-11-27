@@ -1,4 +1,4 @@
-==== BASE ACTION ====
+==== BASE ACTION (With Authentication)====
 
 var defer = q.defer();
 log.verbose(data);
@@ -7,6 +7,15 @@ COMMON.checkLogin(data._headers["user-id"], data._headers.authorize.token).then(
 }).catch(function(e){
 	defer.reject(e);
 });
+return defer.promise;
+
+====================
+
+==== BASE ACTION (Without Authentication)====
+
+var defer = q.defer();
+log.verbose(data);
+
 return defer.promise;
 
 ====================
