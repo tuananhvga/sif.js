@@ -377,10 +377,7 @@
 						}).catch(console.log);
 					}).catch(console.log);
 				}).catch(console.log);
-				
-				
-				
-				
+
 			});
 		}).catch(function(e){
 			defer.reject(e);

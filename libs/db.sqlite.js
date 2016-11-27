@@ -45,8 +45,8 @@ function buildUserDb(){
 						switch(version){
 							case 0: {
 								querys.push("DROP TABLE IF EXISTS `users`;");
-								querys.push("CREATE TABLE `users`( `user_id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `login_key` TEXT NOT NULL UNIQUE, `login_passwd` TEXT NOT NULL, `name` TEXT DEFAULT 'User', `token` TEXT, `level` INTEGER DEFAULT 1, `exp` INTEGER DEFAULT 0, `game_coin` INTEGER DEFAULT 0, `sns_coin` INTEGER DEFAULT 0, `free_sns_coin` INTEGER DEFAULT 0, `paid_sns_coin` INTEGER DEFAULT 0, `social_point` INTEGER DEFAULT 0, `unit_max` INTEGER DEFAULT 120, `energy_max` INTEGER DEFAULT 25, `energy_full_time` INTEGER DEFAULT 0, `over_max_energy` INTEGER DEFAULT 0, `friend_max` INTEGER DEFAULT 0, `insert_date` INTEGER DEFAULT 0, `tutorial_state` INTEGER DEFAULT 0, `partner` INTEGER DEFAULT 0, `introduction` TEXT DEFAULT 'Hello!', `background_id` INTEGER DEFAULT 1, `award_id` INTEGER DEFAULT 1);");
-								version = 3;
+								querys.push("CREATE TABLE `users`( `user_id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `login_key` TEXT NOT NULL UNIQUE, `login_passwd` TEXT NOT NULL, `name` TEXT DEFAULT 'User', `token` TEXT, `level` INTEGER DEFAULT 1, `exp` INTEGER DEFAULT 0, `game_coin` INTEGER DEFAULT 0, `sns_coin` INTEGER DEFAULT 0, `free_sns_coin` INTEGER DEFAULT 0, `paid_sns_coin` INTEGER DEFAULT 0, `social_point` INTEGER DEFAULT 0, `unit_max` INTEGER DEFAULT 120, `energy_max` INTEGER DEFAULT 25, `energy_full_time` INTEGER DEFAULT 0, `over_max_energy` INTEGER DEFAULT 0, `friend_max` INTEGER DEFAULT 0, `insert_date` INTEGER DEFAULT 0, `tutorial_state` INTEGER DEFAULT 0, `partner` INTEGER DEFAULT 0, `introduction` TEXT DEFAULT 'Hello!', `background_id` INTEGER DEFAULT 1, `award_id` INTEGER DEFAULT 1, `transfer_code` TEXT);");
+								version = 4;
 								break;
 							}
 							case 1:{
@@ -57,6 +57,10 @@ function buildUserDb(){
 								querys.push("ALTER TABLE `users` ADD COLUMN `background_id` INTEGER DEFAULT 1;");
 								querys.push("ALTER TABLE `users` ADD COLUMN `award_id` INTEGER DEFAULT 1;");
 								version = 3;
+							}
+							case 3:{
+								querys.push("ALTER TABLE `users` ADD COLUMN `transfer_code` TEXT;");
+								version = 4;
 							}
 
 						}
