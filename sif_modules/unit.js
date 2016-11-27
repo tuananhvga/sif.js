@@ -269,6 +269,125 @@
 		});
 		return defer.promise;
 		
+	},
+	sale: function(data){
+		var defer = q.defer();
+		log.verbose(data);
+		COMMON.checkLogin(data._headers["user-id"], data._headers.authorize.token).then(function(user_id){
+			//{"module":"unit","action":"sale","timeStamp":1480265333,"mgd":2,"unit_support_list":[],"unit_owning_user_id":[183071223],"commandNum":"fd914565-36a6-42bc-b771-b8cf3fab7ff8.1480265333.7"}
+			console.log(data.unit_owning_user_id);
+			
+			if (data.unit_owning_user_id.length > 50){
+				defer.reject({status: 403, result: {code: 20001, message: "Too Many Units"}});
+				return;
+			}
+			
+			//Check All Valid Number
+			for (var i=0;i<data.unit_owning_user_id.length;i++){
+				if (!(typeof data.unit_owning_user_id[i] === "number" && parseInt(data.unit_owning_user_id[i])===data.unit_owning_user_id[i])){
+					defer.reject({status: 403, result: {code: 20001, message: "Invalid Unit ID"}});
+					return;
+				}
+			}
+			
+			//Check Duplicates
+			if (data.unit_owning_user_id.length != data.unit_owning_user_id.uniqueValues().length){
+				defer.reject({status: 403, result: {code: 20001, message: "Duplicate Unit ID"}});
+				return;
+			}
+
+			var saleValue = 0;
+			var saleDetail = [];
+			var seals = {r: 0, sr: 0, ssr: 0, ur: 0};
+			
+			data.unit_owning_user_id.forEachThen(function(unit_owning_user_id,next){
+				//Check Ownership
+				DB.first("user","SELECT unit_id, level FROM unit WHERE unit_owning_user_id=? AND owner_id=?",[unit_owning_user_id, user_id]).then(function(cardData){
+					if (cardData){
+						//Check Main Team
+						DB.first("user","SELECT main FROM team_slot JOIN team ON team_slot.team_id=team.team_id AND team_slot.user_id=team.user_id WHERE team_slot.user_id=? AND unit_owning_user_id=? AND main=1",[user_id, unit_owning_user_id]).then(function(mainCheck){
+							if (!mainCheck){
+								DB.first("game_unit","SELECT sale_price FROM unit_m as u JOIN unit_level_up_pattern_m as l ON u.unit_level_up_pattern_id=l.unit_level_up_pattern_id WHERE unit_id=? AND unit_level=?",[cardData.unit_id,cardData.level]).then(function(salePriceData){
+									if (salePriceData){
+										saleValue += salePriceData.sale_price;
+										saleDetail.push({
+											unit_owning_user_id: unit_owning_user_id,
+											unit_id: cardData.unit_id,
+											price: salePriceData.sale_price
+										});
+										next();
+									}else{
+										log.error("No Price found for " + cardData.unit_id + "@LvL" + cardData.level);
+										defer.reject({status: 403, result: {code: 20001, message: "No Price Found?"}});
+									}
+								});
+							}else{
+								defer.reject({status: 403, result: {code: 20001, message: "Can't Sell Unit on Main Team"}});
+							}
+						}).catch(function(e){
+							console.log(e);
+							defer.reject({status: 403, result: {code: 20001, message: "Server Error [unit.sale.1]"}});
+						});
+					}else{
+						defer.reject({status: 403, result: {code: 20001, message: "Can't Sell Unit You don't Own"}});
+					}
+				});
+			},function(){
+		
+				log.verbose("Total Sale Value: " + saleValue);
+				DB.first("user","SELECT level, exp, game_coin, sns_coin, social_point, unit_max, energy_max, friend_max FROM users WHERE user_id=?",[user_id]).then(function(user_data){
+					DB.run("user","DELETE FROM team_slot WHERE unit_owning_user_id IN (" + data.unit_owning_user_id.join(",") + ");",[]).then(function(){
+						DB.run("user","UPDATE unit SET removed=1 WHERE owner_id=? AND unit_owning_user_id IN (" + data.unit_owning_user_id.join(",") + ");",[user_id]).then(function(){
+							DB.run("user","UPDATE users SET game_coin = ? WHERE user_id = ?", [user_data.game_coin + saleValue, user_id]).then(function(){
+								defer.resolve({
+									status: 200,
+									result: {
+										total: saleValue,
+										detail: saleDetail,
+										before_user_info: {
+											level: user_data.level,
+											exp: user_data.exp,
+											next_exp: (3*user_data.level) + (3*(user_data.level-1)),
+											game_coin: user_data.game_coin,
+											sns_coin: user_data.sns_coin,
+											social_point: user_data.social_point,
+											unit_max: user_data.unit_max,
+											energy_max: user_data.energy_max,
+											friend_max: user_data.friend_max
+										},
+										after_user_info: {
+											level: user_data.level,
+											exp: user_data.exp,
+											next_exp: (3*user_data.level) + (3*(user_data.level-1)),
+											game_coin: user_data.game_coin + saleValue,
+											sns_coin: user_data.sns_coin,
+											social_point: user_data.social_point,
+											unit_max: user_data.unit_max,
+											energy_max: user_data.energy_max,
+											friend_max: user_data.friend_max
+										},
+										reward_box_flag: false,
+										get_exchange_point_list: [],
+										unit_removable_skill: {
+											owning_info: []
+										}
+									}
+								})
+							}).catch(console.log);
+						}).catch(console.log);
+					}).catch(console.log);
+				}).catch(console.log);
+				
+				
+				
+				
+			});
+		}).catch(function(e){
+			defer.reject(e);
+		});
+		return defer.promise;
+		
+		
 	}
 	
 	

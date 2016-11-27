@@ -265,6 +265,35 @@ var server = http.createServer(function(request,response){
 	}
 });
 
+Array.prototype.forEachThen = function(each,then){
+	var loop = function(array, index, callback){
+		if (array[index]){
+			each(array[index], function(){
+				loop(array,index+1, callback);
+			});
+			return;
+		}
+		callback();
+	}
+	loop(this, 0, function(){
+		then();
+	});
+}
+
+Array.prototype.uniqueValues = function(){
+	var array = [];
+	
+	for (var i=0;i<this.length;i++){
+		if (typeof this[i] === "object"){
+			throw new Error("Objects not allowed!");
+		}
+		if (array.indexOf(this[i]) < 0){
+			array.push(this[i]);
+		}
+	}
+	return array;
+}
+
 DB.init().then(function(){
 	server.listen(8081, function(){
 		log.info("Started Server on Port 8081");
