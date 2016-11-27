@@ -99,6 +99,37 @@
 		defer.resolve({status: 200, result: {owning_info:[],equipment_info:[]}});
 		
 		return defer.promise;
+	},
+	favorite: function(data){
+		var defer = q.defer();
+		log.verbose(data);
+		COMMON.checkLogin(data._headers["user-id"], data._headers.authorize.token).then(function(user_id){
+			//{"module":"unit","action":"favorite","timeStamp":1480216228,"mgd":2,"favorite_flag":1,"unit_owning_user_id":180943775,"commandNum":"bf87964d-a49a-4801-bbf7-7153efbe0808.1480216228.8"}
+			
+			if (data.favorite_flag == 1 || data.favorite_flag == 0){
+				DB.first("user","SELECT unit_owning_user_id FROM unit WHERE unit_owning_user_id=? AND owner_id=?",[data.unit_owning_user_id, user_id]).then(function(d){
+					if (d){
+						DB.run("user","UPDATE unit SET favorite_flag=? WHERE unit_owning_user_id=? AND owner_id=?",[data.favorite_flag, d.unit_owning_user_id, user_id]).then(function(){
+							defer.resolve({status:200, result: []});
+						}).catch(function(d){
+							defer.reject({status: 403, result: {code: 20001, message: ""}});
+						});
+					}else{
+						defer.reject({status: 403, result: {code: 20001, message: ""}});
+					}
+				}).catch(function(e){
+					defer.reject({status: 403, result: {code: 20001, message: ""}});
+				});
+			}else{
+				defer.reject({status: 403, result: {code: 20001, message: ""}});
+			}
+			
+			
+		}).catch(function(e){
+			defer.reject(e);
+		});
+		return defer.promise;
+		
 	}
 	
 	
