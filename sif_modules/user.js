@@ -13,8 +13,8 @@
 				userData.insert_date = "2016-11-25 00:00:00";
 				userData.update_date = "2016-11-25 00:00:00";
 				userData.energy_full_need_time = 0;
-				userData.unlock_random_live_muse = 0;
-				userData.unlock_random_live_aqours = 0;
+				userData.unlock_random_live_muse = 1;
+				userData.unlock_random_live_aqours = 1;
 			
 				
 				

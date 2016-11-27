@@ -1,3 +1,6 @@
 node_modules/
 HMAC_SECRET.KEY
-db/
+db/*
+!db/game/
+db/game/*
+!db/game/live_notes.db_

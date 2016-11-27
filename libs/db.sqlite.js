@@ -21,6 +21,8 @@ function buildUserDb(){
 		{"tableName": "album", "version": 0},
 		{"tableName": "team_slot", "version": 0},
 		{"tableName": "team", "version": 0},
+		{"tableName": "live_status", "version": 0},
+		{"tableName": "live_progress", "version": 0},
 	];
 	
 	log.verbose("Preparing User Database");
@@ -66,13 +68,20 @@ function buildUserDb(){
 						switch(version){
 							case 0: {
 								querys.push("DROP TABLE IF EXISTS `unit`;");
-								querys.push("CREATE TABLE `unit`( `owner_id` INTEGER NOT NULL, `unit_owning_user_id` INTEGER PRIMARY KEY AUTOINCREMENT, `unit_id` INTEGER NOT NULL, `exp` INTEGER, `next_exp` INTEGER, `level` INTEGER, `max_level` INTEGER, `rank` INTEGER, `max_rank` INTEGER, `love` INTEGER, `max_love` INTEGER, `unit_skill_level` INTEGER, `unit_skill_exp` INTEGER, `max_hp` INTEGER, `unit_removable_skill_capacity` INTEGER, `favorite_flag` INTEGER, `display_rank` INTEGER,`removed`	INTEGER DEFAULT 0);");
-								version = 2;
+								querys.push("CREATE TABLE `unit`( `owner_id` INTEGER NOT NULL, `unit_owning_user_id` INTEGER PRIMARY KEY AUTOINCREMENT, `unit_id` INTEGER NOT NULL, `exp` INTEGER, `next_exp` INTEGER, `level` INTEGER, `max_level` INTEGER, `rank` INTEGER, `max_rank` INTEGER, `love` INTEGER, `max_love` INTEGER, `unit_skill_level` INTEGER, `unit_skill_exp` INTEGER, `max_hp` INTEGER, `unit_removable_skill_capacity` INTEGER, `favorite_flag` INTEGER, `display_rank` INTEGER,`removed`	INTEGER DEFAULT 0,`stat_smile` INTEGER DEFAULT 0,`stat_pure` INTEGER DEFAULT 0,`stat_cool` INTEGER DEFAULT 0,`attribute` INTEGER DEFAULT 1);");
+								version = 3;
 								break;
 							}
 							case 1: {
 								querys.push("ALTER TABLE `unit` ADD COLUMN 	`removed`	INTEGER DEFAULT 0;");
 								version = 2;
+							}
+							case 2: {
+								querys.push("ALTER TABLE `unit` ADD COLUMN `stat_smile` INTEGER DEFAULT 0;");
+								querys.push("ALTER TABLE `unit` ADD COLUMN `stat_pure` INTEGER DEFAULT 0;");
+								querys.push("ALTER TABLE `unit` ADD COLUMN `stat_cool` INTEGER DEFAULT 0;");
+								querys.push("ALTER TABLE `unit` ADD COLUMN `attribute` INTEGER DEFAULT 1;");
+								version = 3;
 							}
 						}
 						if (rows[i].version != version)
@@ -113,6 +122,34 @@ function buildUserDb(){
 							case 0: {
 								querys.push("DROP TABLE IF EXISTS `team`;");
 								querys.push("CREATE TABLE `team`( `user_id` INTEGER NOT NULL, `team_id` INTEGER NOT NULL, `team_name` TEXT, `main` INTEGER NOT NULL DEFAULT 0);");
+								version = 1;
+								break;
+							}
+						}
+						if (rows[i].version != version)
+						querys.push("INSERT OR REPLACE INTO meta (tableName, version) VALUES ('"+table+"',"+version+");");
+						
+						break;
+					}
+					case "live_status":{
+						switch(version){
+							case 0: {
+								querys.push("DROP TABLE IF EXISTS `live_status`;");
+								querys.push("CREATE TABLE `live_status`( `user_id` INTEGER, `live_difficulty_id` INTEGER,`status` INTEGER DEFAULT 1, `hi_score` INTEGER DEFAULT 0, `hi_combo_count` INTEGER DEFAULT 0, `clear_cnt` INTEGER DEFAULT 0, PRIMARY KEY(user_id,live_difficulty_id));");
+								version = 1;
+								break;
+							}
+						}
+						if (rows[i].version != version)
+						querys.push("INSERT OR REPLACE INTO meta (tableName, version) VALUES ('"+table+"',"+version+");");
+						
+						break;
+					}
+					case "live_progress":{
+						switch(version){
+							case 0: {
+								querys.push("DROP TABLE IF EXISTS `live_progress`;");
+								querys.push("CREATE TABLE `live_progress`( `user_id` INTEGER, `live_difficulty_id` INTEGER,`start_time` INTEGER);");
 								version = 1;
 								break;
 							}
@@ -260,6 +297,8 @@ module.exports = {
 		
 		openGameDB("unit")
 		.then(function(){return openGameDB("item");})
+		.then(function(){return openGameDB("live");})
+		.then(function(){return openGameDB("live_notes");})
 		.then(function(){
 		
 				

@@ -42,10 +42,10 @@
 			(SELECT count(*) FROM unit WHERE owner_id=users.user_id AND removed=0) as unit_cnt, \
 			unit.unit_owning_user_id,  unit_id, unit.exp as unit_exp, unit.next_exp, unit.level as unit_level, unit.max_level, \
 			unit.rank, unit.max_rank, unit.love, unit.max_love, unit.unit_skill_level, unit.max_hp, unit.favorite_flag, unit.display_rank, unit.unit_skill_exp, \
-			unit.unit_removable_skill_capacity, users.background_id, users.award_id \
+			unit.unit_removable_skill_capacity, users.background_id, users.award_id, unit.attribute, unit.stat_smile, unit.stat_pure, unit.stat_cool \
 		FROM users \
 			JOIN team ON users.user_id=team.user_id AND team.main=1 \
-			JOIN team_slot ON team.team_id AND team_slot.slot_id=5 \
+			JOIN team_slot ON team.team_id AND team_slot.slot_id=5 AND team_slot.user_id=users.user_id \
 			JOIN unit ON team_slot.unit_owning_user_id=unit.unit_owning_user_id \
 		WHERE team.user_id=?",[data.user_id]).then(function(d){
 			if (d){
@@ -80,10 +80,10 @@
 						display_rank: d.display_rank,
 						unit_skill_exp: d.unit_skill_exp,
 						unit_removable_skill_capacity: d.unit_removable_skill_capacity,
-						attribute: 2,
-						smile: 0,
-						cute: 0,
-						cool: 0,
+						attribute: d.attribute,
+						smile: d.stat_smile,
+						cute: d.stat_pure,
+						cool: d.stat_cool,
 						is_love_max: d.love>=d.max_love,
 						is_level_max: d.level>=d.max_level,
 						is_rank_max: d.rank>=d.max_rank,

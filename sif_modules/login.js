@@ -107,11 +107,6 @@
 		}).catch(function(e){
 			defer.resolve(e);
 		});
-		
-		
-		
-		
-		
 		return defer.promise;
 	},
 	topinfoonce: function(data){		
@@ -128,8 +123,6 @@
 		}).catch(function(e){
 			defer.resolve(e);
 		});
-		
-		
 		return defer.promise;
 	},
 	unitlist: function(data){
@@ -220,13 +213,6 @@ UPDATE users SET tutorial_state=-1 WHERE user_id=${user_id};
 										log.error(e);
 										defer.resolve({status:600, result: {}});
 									});
-									
-									
-									
-									
-									
-									
-									
 								});
 							}).catch(function(err){
 								log.error(err);
@@ -244,23 +230,11 @@ UPDATE users SET tutorial_state=-1 WHERE user_id=${user_id};
 			}).catch(function(err){
 				log.error(err); defer.resolve({status: 600, result: false});
 			});
-			
-			
-			
-			
-			
-			
-			
+
 		}).catch(function(e){
 			defer.reject(e);
 		});
 		return defer.promise;
 	}
-	
-	
-	
-	
-	
-	
-	
+
 }

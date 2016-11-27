@@ -66,7 +66,11 @@ SELECT
 	unit_m.disable_rank_up,
 	skill.max_level as max_skill_level,
 	unit_m.default_removable_skill_capacity,
-	unit_m.hp_max-clevel.hp_diff as max_hp
+	unit_m.hp_max-clevel.hp_diff as max_hp,
+	unit_m.smile_max-clevel.smile_diff as smile,
+	unit_m.pure_max-clevel.pure_diff as pure,
+	unit_m.cool_max-clevel.cool_diff as cool,
+	unit_m.attribute_id
 FROM unit_m 
 	JOIN unit_level_up_pattern_m as clevel ON clevel.unit_level_up_pattern_id = unit_m.unit_level_up_pattern_id
 	JOIN unit_level_up_pattern_m as plevel ON plevel.unit_level_up_pattern_id = unit_m.unit_level_up_pattern_id
@@ -89,10 +93,14 @@ WHERE unit_id = ? AND clevel.unit_level = ? AND plevel.unit_level=?
 				$max_love: (options.rank==1?d.before_love_max:d.after_love_max),
 				$unit_skill_level: d.max_skill_level==null?0:1,
 				$max_hp: d.max_hp,
-				$removable_skill_capacity: d.default_removable_skill_capacity
+				$removable_skill_capacity: d.default_removable_skill_capacity,
+				$stat_smile: d.smile,
+				$stat_pure: d.pure,
+				$stat_cool: d.cool,
+				$attribute: d.attribute_id
 			}
 			
-			var insertQuery = "INSERT INTO unit (owner_id, unit_id, exp, next_exp, level, max_level, rank, max_rank, love, max_love, unit_skill_level, unit_skill_exp, max_hp, unit_removable_skill_capacity, favorite_flag, display_rank) VALUES ($owner_id, $unit_id, $exp, $next_exp, $level, $max_level, $rank, $max_rank, $love, $max_love, $unit_skill_level, 0, $max_hp, $removable_skill_capacity, 0, $rank);";
+			var insertQuery = "INSERT INTO unit (owner_id, unit_id, exp, next_exp, level, max_level, rank, max_rank, love, max_love, unit_skill_level, unit_skill_exp, max_hp, unit_removable_skill_capacity, favorite_flag, display_rank, stat_smile, stat_pure, stat_cool, attribute) VALUES ($owner_id, $unit_id, $exp, $next_exp, $level, $max_level, $rank, $max_rank, $love, $max_love, $unit_skill_level, 0, $max_hp, $removable_skill_capacity, 0, $rank, $stat_smile, $stat_pure, $stat_cool, $attribute);";
 			
 			DB.run("user",insertQuery, data).then(function(x){
 				DB.run("user","INSERT OR REPLACE INTO `album`(`user_id`,`unit_id`) VALUES (?,?);",[user_id, unit_id]).then(function(){
