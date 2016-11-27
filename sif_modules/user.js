@@ -69,21 +69,36 @@
 	getnavi: function(data){
 		var defer = q.defer();
 		log.verbose(data);
-		
 		COMMON.checkLogin(data._headers["user-id"], data._headers.authorize.token).then(function(user_id){
-			defer.resolve({status: 200, result: {
-				user: {
-					user_id: user_id,
-					unit_owning_user_id: 0
-				}
-			}});
+			DB.first("user","SELECT partner FROM users WHERE user_id=?",[user_id]).then(function(d){
+				defer.resolve({status: 200, result: {
+					user: {
+						user_id: user_id,
+						unit_owning_user_id: d.partner
+					}
+				}});
+			}).catch(function(e){
+				defer.reject({status: 403, result: {code: 20001, message: ""}});
+			});
+			
 		}).catch(function(e){
 			defer.reject(e);
 		});
-		
-		
-		
 		return defer.promise;	
+	},
+	changenavi: function(data){
+		var defer = q.defer();
+		log.verbose(data);
+		COMMON.checkLogin(data._headers["user-id"], data._headers.authorize.token).then(function(user_id){
+				DB.run("user","UPDATE users SET partner=? WHERE user_id=?",[data.unit_owning_user_id, user_id]).then(function(d){
+					defer.resolve({status: 200, result: []});
+				}).catch(function(e){
+					defer.reject({status: 403, result: {code: 20001, message: ""}});
+				});
+		}).catch(function(e){
+			defer.reject(e);
+		});
+		return defer.promise;
 	}
 	
 }
