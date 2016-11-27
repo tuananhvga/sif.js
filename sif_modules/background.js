@@ -4,7 +4,6 @@
 		log.verbose(data);
 		COMMON.checkLogin(data._headers["user-id"], data._headers.authorize.token).then(function(user_id){
 			DB.first("user","SELECT background_id FROM users WHERE user_id=?",[user_id]).then(function(user_bg){
-				log.debug(user_bg);
 				DB.get("game_item","SELECT background_id FROM background_m",[]).then(function(d){
 					var bginfo = [];
 					var set = false;
