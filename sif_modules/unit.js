@@ -604,6 +604,8 @@
 										  }).then(function(){
 											return DB.run("user","UPDATE users SET game_coin=? WHERE user_id=?",[(userData.game_coin-unitData.rank_up_cost),user_id]);
 										  }).then(function(){
+											return DB.run("user","UPDATE album SET rank_max_flag=1 WHERE unit_id=? AND user_id=?",[mainData.unit_id,user_id]);
+										  }).then(function(){
 											  
 											var result = {
 											  before: {
