@@ -95,9 +95,39 @@
 	removableskillinfo: function(data){
 		var defer = q.defer();
 		log.verbose(data);
-		
-		defer.resolve({status: 200, result: {owning_info:[],equipment_info:[]}});
-		
+		COMMON.checkLogin(data._headers["user-id"], data._headers.authorize.token).then(function(user_id){
+			DB.get("user", "SELECT sis_id, amount, (SELECT COUNT(*) FROM sis_equip as e JOIN unit as u ON u.unit_owning_user_id = e.unit_owning_user_id WHERE u.owner_id=sis_owning.user_id AND e.sis_id = sis_owning.sis_id) as equip FROM sis_owning WHERE user_id=?",[user_id]).then(function(d){
+				var owning = [];
+				for (var i=0;i<d.length;i++){
+					owning.push({
+						unit_removable_skill_id: d[i].sis_id,
+						total_amount: d[i].amount,
+						equipped_amount: d[i].equip
+					});
+				}
+				DB.get("user","SELECT sis_equip.unit_owning_user_id, sis_equip.sis_id FROM sis_equip JOIN unit ON unit.unit_owning_user_id=sis_equip.unit_owning_user_id WHERE unit.owner_id=?",[user_id]).then(function(equipInfo){
+					var equip_info = {};
+					equipInfo.forEachThen(function(equip, next){
+						
+						if (!equip_info[equip.unit_owning_user_id]){
+							equip_info[equip.unit_owning_user_id] = {
+								unit_owning_user_id: equip.unit_owning_user_id,
+								detail: []
+							};
+						}
+						equip_info[equip.unit_owning_user_id].detail.push({
+							unit_removable_skill_id: equip.sis_id
+						});
+
+						next();
+					},function(){
+						defer.resolve({status: 200, result: {owning_info:owning,equipment_info:equip_info}});
+					});
+				});
+			}).catch(console.log);
+		}).catch(function(e){
+			defer.reject(e);
+		});
 		return defer.promise;
 	},
 	favorite: function(data){
@@ -336,43 +366,51 @@
 		
 				log.verbose("Total Sale Value: " + saleValue);
 				DB.first("user","SELECT level, exp, game_coin, sns_coin, social_point, unit_max, energy_max, friend_max FROM users WHERE user_id=?",[user_id]).then(function(user_data){
-					DB.run("user","DELETE FROM team_slot WHERE unit_owning_user_id IN (" + data.unit_owning_user_id.join(",") + ");",[]).then(function(){
-						DB.run("user","UPDATE unit SET removed=1 WHERE owner_id=? AND unit_owning_user_id IN (" + data.unit_owning_user_id.join(",") + ");",[user_id]).then(function(){
-							DB.run("user","UPDATE users SET game_coin = ? WHERE user_id = ?", [user_data.game_coin + saleValue, user_id]).then(function(){
-								defer.resolve({
-									status: 200,
-									result: {
-										total: saleValue,
-										detail: saleDetail,
-										before_user_info: {
-											level: user_data.level,
-											exp: user_data.exp,
-											next_exp: (3*user_data.level) + (3*(user_data.level-1)),
-											game_coin: user_data.game_coin,
-											sns_coin: user_data.sns_coin,
-											social_point: user_data.social_point,
-											unit_max: user_data.unit_max,
-											energy_max: user_data.energy_max,
-											friend_max: user_data.friend_max
-										},
-										after_user_info: {
-											level: user_data.level,
-											exp: user_data.exp,
-											next_exp: (3*user_data.level) + (3*(user_data.level-1)),
-											game_coin: user_data.game_coin + saleValue,
-											sns_coin: user_data.sns_coin,
-											social_point: user_data.social_point,
-											unit_max: user_data.unit_max,
-											energy_max: user_data.energy_max,
-											friend_max: user_data.friend_max
-										},
-										reward_box_flag: false,
-										get_exchange_point_list: [],
-										unit_removable_skill: {
-											owning_info: []
-										}
-									}
-								})
+					DB.run("user","DELETE FROM sis_equip WHERE unit_owning_user_id IN (" + data.unit_owning_user_id.join(",") + ");",[]).then(function(){
+						DB.run("user","DELETE FROM team_slot WHERE unit_owning_user_id IN (" + data.unit_owning_user_id.join(",") + ");",[]).then(function(){
+							DB.run("user","UPDATE unit SET removed=1 WHERE owner_id=? AND unit_owning_user_id IN (" + data.unit_owning_user_id.join(",") + ");",[user_id]).then(function(){
+								DB.run("user","UPDATE users SET game_coin = ? WHERE user_id = ?", [user_data.game_coin + saleValue, user_id]).then(function(){
+									
+									
+									modules.unit.removableskillinfo(data).then(function(sis_info){
+										defer.resolve({
+											status: 200,
+											result: {
+												total: saleValue,
+												detail: saleDetail,
+												before_user_info: {
+													level: user_data.level,
+													exp: user_data.exp,
+													next_exp: (3*user_data.level) + (3*(user_data.level-1)),
+													game_coin: user_data.game_coin,
+													sns_coin: user_data.sns_coin,
+													social_point: user_data.social_point,
+													unit_max: user_data.unit_max,
+													energy_max: user_data.energy_max,
+													friend_max: user_data.friend_max
+												},
+												after_user_info: {
+													level: user_data.level,
+													exp: user_data.exp,
+													next_exp: (3*user_data.level) + (3*(user_data.level-1)),
+													game_coin: user_data.game_coin + saleValue,
+													sns_coin: user_data.sns_coin,
+													social_point: user_data.social_point,
+													unit_max: user_data.unit_max,
+													energy_max: user_data.energy_max,
+													friend_max: user_data.friend_max
+												},
+												reward_box_flag: false,
+												get_exchange_point_list: [],
+												unit_removable_skill: {
+													owning_info: sis_info.result.owning_info
+												}
+											}
+										});
+									});
+									
+									
+								}).catch(console.log);
 							}).catch(console.log);
 						}).catch(console.log);
 					}).catch(console.log);
@@ -384,6 +422,117 @@
 		});
 		return defer.promise;
 		
+		
+	},
+	merge: function(data){
+		var defer = q.defer();
+		log.verbose(data);
+		COMMON.checkLogin(data._headers["user-id"], data._headers.authorize.token).then(function(user_id){
+			//{"module":"unit","unit_owning_user_ids":[182820128,182820127],"action":"merge","timeStamp":1480304749,"base_owning_unit_user_id":183636001,"mgd":2,"unit_support_list":[],"commandNum":"fd914565-36a6-42bc-b771-b8cf3fab7ff8.1480304749.7"}
+			//https://jsonblob.com/5431d60e-b51d-11e6-871b-e74150dd9cfc
+			defer.reject({status: 403, result: {code: 20001, message: "Not Ready"}});
+		}).catch(function(e){
+			defer.reject(e);
+		});
+		return defer.promise;
+	},
+	removableskillequipment: function(data){
+		//{"module":"unit","remove":[],"action":"removableSkillEquipment","timeStamp":1480305009,"equip":[{"unit_removable_skill_id":2,"unit_owning_user_id":183636001}],"mgd":2,"commandNum":"fd914565-36a6-42bc-b771-b8cf3fab7ff8.1480305009.7"}
+		//{"module":"unit","remove":[{"unit_removable_skill_id":2,"unit_owning_user_id":183636001}],"action":"removableSkillEquipment","timeStamp":1480307483,"equip":[],"mgd":2,"commandNum":"fd914565-36a6-42bc-b771-b8cf3fab7ff8.1480307483.7"}
+		//Return Blank
+		var defer = q.defer();
+		log.verbose(data);
+		COMMON.checkLogin(data._headers["user-id"], data._headers.authorize.token).then(function(user_id){
+			try {
+				log.verbose("Remove");
+				data.remove.forEachThen(function(removeSIS, next){
+					log.verbose("Remove: " + JSON.stringify(removeSIS));
+					if (typeof removeSIS.unit_owning_user_id === "number" && parseInt(removeSIS.unit_owning_user_id) === removeSIS.unit_owning_user_id){
+						DB.first("user","SELECT owner_id, unit_owning_user_id FROM unit WHERE owner_id=? AND unit_owning_user_id=? AND removed=0",[user_id, removeSIS.unit_owning_user_id]).then(function(ownerCheck){
+							if (ownerCheck){
+								DB.run("user","DELETE FROM sis_equip WHERE unit_owning_user_id=? AND sis_id=?;",[removeSIS.unit_owning_user_id, removeSIS.unit_removable_skill_id]).then(function(){
+									next();
+								}).catch(console.log);
+							}else{
+								defer.reject({status: 403, result: {code: 20001, message: "You don't own that card."}});
+							}
+						}).catch(console.log);;
+					}else{
+						defer.reject({status: 403, result: {code: 20001, message: "Invalid Unit ID"}});
+					}
+				},function(){
+
+					modules.unit.removableskillinfo(data).then(function(removableSkillInfo){
+						var availableSkills = {};
+						for(var i=0;i<removableSkillInfo.result.owning_info.length;i++){
+							availableSkills[removableSkillInfo.result.owning_info[i].unit_removable_skill_id] = removableSkillInfo.result.owning_info[i].total_amount - removableSkillInfo.result.owning_info[i].equipped_amount;
+						}
+						
+						console.log(availableSkills);
+						log.verbose("Equip");
+						DB.get("game_unit","SELECT unit_removable_skill_id, size FROM unit_removable_skill_m",[]).then(function(costData){
+							var skillCosts = {};
+							for (var i=0;i<costData.length;i++){
+								skillCosts[costData.unit_removable_skill_id] = costData.size;
+							}
+							
+							
+							data.equip.forEachThen(function(equipSIS, next){
+								log.verbose("Equip: " + JSON.stringify(equipSIS));
+								if (!costData[equipSIS.unit_removable_skill_id]){
+									defer.reject({status: 403, result: {code: 20001, message: "Invalid Skill ID"}});
+									return;
+								}
+								DB.first("user","SELECT owner_id, unit_owning_user_id, unit_removable_skill_capacity FROM unit WHERE owner_id=? AND unit_owning_user_id=? AND removed=0",[user_id, equipSIS.unit_owning_user_id]).then(function(cardCheck){
+									if (cardCheck){
+										var spaceAvailable = cardCheck.unit_removable_skill_capacity+0;
+										DB.get("user","SELECT sis_id FROM sis_equip WHERE unit_owning_user_id=?",[equipSIS.unit_owning_user_id]).then(function(currentEquips){
+											for(var i=0;i<currentEquips.length;i++){
+												if (costData[currentEquips[i].sis_id]){
+													spaceAvailable -= costData[currentEquips[i].sis_id];
+												}
+											}
+											
+											if (spaceAvailable < costData[equipSIS.unit_removable_skill_id]){
+												defer.reject({status: 403, result: {code: 20001, message: "Not Enough Space"}});
+												return;
+											}
+											
+											DB.run("user","INSERT OR REPLACE INTO sis_equip VALUES (?, ?)",[equipSIS.unit_owning_user_id, equipSIS.unit_removable_skill_id]).then(function(){
+												next();
+											}).catch(console.log);
+										});
+										
+										
+									}else{
+										defer.reject({status: 403, result: {code: 20001, message: "Invalid Card"}});
+									}
+								});
+							},function(){
+								defer.resolve({status: 200, result: []});
+								log.debug("Done");
+							})
+							
+							
+						});
+						
+					});
+					
+					
+				});
+			} catch (e){
+				console.log(e);
+				log.error(e.message);
+				defer.resolve({status: 200, result: []});
+			}
+			
+			
+			
+			
+		}).catch(function(e){
+			defer.reject(e);
+		});
+		return defer.promise;
 		
 	}
 	

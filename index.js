@@ -112,10 +112,6 @@ function handleRequest(data, finish, currentResponse){
 
 var server = http.createServer(function(request,response){
 	log.verbose("Request Recieved: " + request.url);
-	
-	
-	
-	
 	if (request.url.startsWith("/main.php/")){
 		response.setHeader("server-version", CLIENT_VERSION);
 		response.setHeader("server_version", SERVER_VERSION);
@@ -275,6 +271,7 @@ Array.prototype.forEachThen = function(each,then){
 		}
 		callback();
 	}
+	if (this.length == 0){ then(); return; }
 	loop(this, 0, function(){
 		then();
 	});
@@ -310,7 +307,9 @@ const readLine = readline.createInterface({
 
 function readlineSetup(){
 	readLine.question('',(answer)=>{
-		switch(answer){
+		var c=answer.match(/(?:[^\s"]+|"[^"]*")+/g);if (!c){c=[""];}
+		for(var i=0;i<c.length;i++){if(c[i].startsWith("\"")&&c[i].endsWith("\""))c[i]=c[i].replace(/^"/,"").replace(/"$/,"");}
+		switch(c[0]){
 			case "": // No Command for Quick Restart during Development :)
 			case "r":
 			case "restart":{
@@ -322,7 +321,58 @@ function readlineSetup(){
 					},100);
 				});
 				return;
+				break;
 			}
+			case "givecard": {
+				if (c.length < 3){
+					log.info("givecard <user_id> <unit_id> [rank]");
+					break;
+				};
+				try {
+					if (isNaN(c[1]) || isNaN(c[2])){ throw 1; }
+					
+					var user = parseInt(c[1]);
+					var card = parseInt(c[2]);
+					var r = parseInt(c[3]||1);
+					COMMON.addUnitToUser(user,card,{rank: r}).then(function(result){
+						log.info("Added Card. Unit Owning User ID: " + result);
+					}).catch(function(err){
+						console.log(err);
+					});
+					
+				} catch (e){
+					log.info("givecard <user_id> <unit_id> [rank]");
+				}
+				break;
+			}
+			case "givesis":{
+				if (c.length < 3){
+					log.info("givesis <user_id> <sis_id> [amount]");
+					break;
+				};
+				try {
+					if (isNaN(c[1]) || isNaN(c[2])){ throw 1; }
+					
+					var user = parseInt(c[1]);
+					var sis = parseInt(c[2]);
+					var amt = parseInt(c[3]||1);
+					DB.first("user","SELECT amount FROM sis_owning WHERE user_id=? AND sis_id=?",[user,sis]).then(function(d){
+						if (d){amt = d.amount + amt; }
+							DB.run("user","INSERT or REPLACE INTO sis_owning (user_id, sis_id, amount) VALUES (?,?,?)",[user,sis,amt]).then(function(){
+								DB.run("user","DELETE FROM sis_owning WHERE amount<=0",[]).then(function(){
+								log.info("Done. New Total: " + amt);
+								});
+						});
+					});
+					
+				} catch (e){
+					log.info("givesis <user_id> <sis_id> [amount]");
+				}
+				break;
+				
+				
+			}
+			
 			default: {
 				log.error("Invalid Command");
 			}

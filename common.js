@@ -41,7 +41,7 @@
 	
 	addUnitToUser: function(user_id, unit_id, options){
 		
-		log.verbose("Adding Card [" + unit_id + "] to User ["+ user_id +"]");
+		
 		
 		if (!options){options = {};}
 		
@@ -51,7 +51,7 @@
 			level: 1,
 			present: false
 		}, options);
-
+		log.verbose("Adding Card [" + unit_id + "] to User ["+ user_id +"] " + JSON.stringify(options));
 		var plevel = Math.max(1,options.level-1);
 		
 var query = `

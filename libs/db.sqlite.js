@@ -23,6 +23,8 @@ function buildUserDb(){
 		{"tableName": "team", "version": 0},
 		{"tableName": "live_status", "version": 0},
 		{"tableName": "live_progress", "version": 0},
+		{"tableName": "sis_equip", "version": 0},
+		{"tableName": "sis_owning", "version": 0},
 	];
 	
 	log.verbose("Preparing User Database");
@@ -154,6 +156,34 @@ function buildUserDb(){
 							case 0: {
 								querys.push("DROP TABLE IF EXISTS `live_progress`;");
 								querys.push("CREATE TABLE `live_progress`( `user_id` INTEGER, `live_difficulty_id` INTEGER,`start_time` INTEGER);");
+								version = 1;
+								break;
+							}
+						}
+						if (rows[i].version != version)
+						querys.push("INSERT OR REPLACE INTO meta (tableName, version) VALUES ('"+table+"',"+version+");");
+						
+						break;
+					}
+					case "sis_owning":{
+						switch(version){
+							case 0: {
+								querys.push("DROP TABLE IF EXISTS `sis_owning`;");
+								querys.push("CREATE TABLE `sis_owning` (`user_id` INTEGER,`sis_id` INTEGER,`amount` INTEGER DEFAULT 0,PRIMARY KEY(user_id,sis_id));");
+								version = 1;
+								break;
+							}
+						}
+						if (rows[i].version != version)
+						querys.push("INSERT OR REPLACE INTO meta (tableName, version) VALUES ('"+table+"',"+version+");");
+						
+						break;
+					}
+					case "sis_equip":{
+						switch(version){
+							case 0: {
+								querys.push("DROP TABLE IF EXISTS `sis_equip`;");
+								querys.push("CREATE TABLE `sis_equip` (`unit_owning_user_id` INTEGER,`sis_id` INTEGER, PRIMARY KEY(unit_owning_user_id,sis_id));");
 								version = 1;
 								break;
 							}
