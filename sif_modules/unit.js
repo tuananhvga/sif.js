@@ -428,11 +428,272 @@
 		var defer = q.defer();
 		log.verbose(data);
 		COMMON.checkLogin(data._headers["user-id"], data._headers.authorize.token).then(function(user_id){
-			//{"module":"unit","unit_owning_user_ids":[182820128,182820127],"action":"merge","timeStamp":1480304749,"base_owning_unit_user_id":183636001,"mgd":2,"unit_support_list":[],"commandNum":"fd914565-36a6-42bc-b771-b8cf3fab7ff8.1480304749.7"}
-			//https://jsonblob.com/5431d60e-b51d-11e6-871b-e74150dd9cfc
-			defer.reject({status: 403, result: {code: 20001, message: "Not Ready"}});
+		  //{"module":"unit","unit_owning_user_ids":[182820128,182820127],"action":"merge","timeStamp":1480304749,"base_owning_unit_user_id":183636001,"mgd":2,"unit_support_list":[],"commandNum":"fd914565-36a6-42bc-b771-b8cf3fab7ff8.1480304749.7"}
+		  //https://jsonblob.com/5431d60e-b51d-11e6-871b-e74150dd9cfc
+		  
+		  if (typeof data.unit_support_list==="object" && data.unit_support_list.length > 0){
+			defer.reject({status: 403, result: {code: 20001, message: "Cannot use supports."}});
+			return;
+		  }
+		  if (!(typeof data.unit_owning_user_ids === "object" && Array.isArray(data.unit_owning_user_ids))){
+			defer.reject({status: 403, result: {code: 20001, message: "Invalid Sacrifice [1]"}});
+			return;
+		  }
+		  if (!(data.unit_owning_user_ids.length > 0 && data.unit_owning_user_ids.length<=12)){
+			defer.reject({status: 403, result: {code: 20001, message: "Incorrect number of sacrifices"}});
+			return;
+		  }
+		  for (var i=0;i<data.unit_owning_user_ids.length;i++){
+			if (!(typeof data.unit_owning_user_ids[i] === "number" && parseInt(data.unit_owning_user_ids[i])==data.unit_owning_user_ids[i])){
+			  defer.reject({status: 403, result: {code: 20001, message: "Invalid Sacrifice [2]"}});
+			  return;
+			}
+		  }
+		  if (!(typeof data.base_owning_unit_user_id === "number" && parseInt(data.base_owning_unit_user_id)===data.base_owning_unit_user_id)){
+			defer.reject({status: 403, result: {code: 20001, message: "Invalid Base Card[1]"}});
+			return;
+		  }
+		  DB.first("user","SELECT unit_id,attribute,level,max_level,rank,max_rank,love,max_love,exp,next_exp, unit_skill_exp, unit_skill_level,max_hp,unit_removable_skill_capacity FROM unit WHERE unit_owning_user_id=? AND owner_id=? AND removed=0",[data.base_owning_unit_user_id,user_id]).then(function(baseUnit){
+			if (!baseUnit){
+			  defer.reject({status: 403, result: {code: 20001, message: "You don't own that card."}});
+			  return;
+			}
+			console.log("Base Unit: ");
+			console.log(baseUnit);
+			if ((baseUnit.unit_skill_level == 0 || baseUnit.unit_skill_level >=8) && baseUnit.level==baseUnit.max_level){
+			  defer.reject({status: 403, result: {code: 20001, message: "Base unit is maxed."}});
+			  return;
+			}
+					  
+			DB.first("game_unit","SELECT default_unit_skill_id,unit_level_up_pattern_id FROM unit_m WHERE unit_id=?",[baseUnit.unit_id]).then(function(baseUnitData)  {
+			  if (!baseUnitData){
+				defer.reject({status: 403, result: {code: 20001, message: "Unknown Base Unit"}});
+				return;
+			  }
+			  DB.get("user","SELECT unit_owning_user_id, unit_id, attribute, level, unit_skill_level FROM unit WHERE owner_id=? AND removed=0 AND favorite_flag=0 AND unit_owning_user_id IN (" + data.unit_owning_user_ids.join(",") + ");",[user_id]).then(function(sacrificeUnits){
+				if (sacrificeUnits.length != data.unit_owning_user_ids.length){
+				  defer.reject({status: 403, result: {code: 20001, message: "You don't own all those cards, OR, one of them is favorited."}});
+				  return;
+				}
+				console.log(sacrificeUnits);
+				DB.get("user","SELECT unit_owning_user_id FROM team_slot JOIN team ON team_slot.team_id=team.team_id AND team_slot.user_id=team.user_id WHERE main=1 AND unit_owning_user_id IN (" + data.unit_owning_user_ids.join(",") + ");",[]).then(function(mainTeamCheck){
+				  if (mainTeamCheck.length > 0){
+					defer.reject({status: 403, result: {code: 20001, message: "A sacrifice is in a main team."}});
+					return;
+				  }
+				  var TOTAL_EXP_GAIN = 0;
+				  var TOTAL_SKILL_EXP_GAIN = 0;
+				  var TOTAL_COST = 0;
+				  sacrificeUnits.forEachThen(function(unit, next){
+					console.log(unit); //x
+					DB.first("game_unit","SELECT u.default_unit_skill_id, L.merge_cost,L.merge_exp, S.grant_exp FROM unit_m as u JOIN unit_level_up_pattern_m as L on u.unit_level_up_pattern_id=L.unit_level_up_pattern_id LEFT JOIN unit_skill_level_m as S on S.unit_skill_id = u.default_unit_skill_id WHERE u.unit_id=? AND L.unit_level=? AND (S.skill_level IS NULL or S.skill_level=?)",[unit.unit_id, unit.level, unit.unit_skill_level]).then(function(sacrificeUnit){
+					  if (!sacrificeUnit){
+						defer.reject({status: 403, result: {code: 20001, message: "Unknown Unit"}});
+						return;
+					  }
+					  TOTAL_EXP_GAIN += sacrificeUnit.merge_exp * (unit.attribute==baseUnit.attribute?1.2:1);
+					  if (baseUnitData.default_unit_skill_id != null && sacrificeUnit.default_unit_skill_id == baseUnitData.default_unit_skill_id || (sacrificeUnit.default_unit_skill_id != null && sacrificeUnit.default_unit_skill_id >=489 && sacrificeUnit.default_unit_skill_id <=500 && (unit.attribute==5 || unit.attribute == baseUnit.attribute))){
+						TOTAL_SKILL_EXP_GAIN += sacrificeUnit.grant_exp
+					  }
+					  TOTAL_COST += sacrificeUnit.merge_cost;
+					  next();
+					}).catch(function(e){
+					  console.log(e);
+					  defer.reject({status: 403, result: {code: 20001, message: "Server Error [4]"}});
+					});
+				  },function(){
+					var successType = 1;
+					if (Math.random() > 0.1){
+					  successType = 1.5;
+					  if (Math.random() > 0.1){
+						log.verbose("ULTRA SUCCESS");
+						successType = 2;
+					  }else{
+						log.verbose("SUPER SUCCESS");
+					  }
+					}
+					TOTAL_EXP_GAIN = Math.round(TOTAL_EXP_GAIN * successType);
+					console.log("EXP: " + TOTAL_EXP_GAIN);
+					console.log("SkillEXP: " + TOTAL_SKILL_EXP_GAIN);
+					console.log("Cost: " + TOTAL_COST);
+					var new_exp = baseUnit.exp + TOTAL_EXP_GAIN;
+					var new_skill_exp = baseUnit.unit_skill_exp + TOTAL_SKILL_EXP_GAIN;
+					DB.first("user","SELECT game_coin,level,exp,sns_coin,social_point,unit_max,energy_max,friend_max,tutorial_state,energy_full_time,over_max_energy FROM users WHERE user_id=?",[user_id]).then(function(userData){
+					  if (userData.game_coin < TOTAL_COST){
+						defer.reject({status: 403, result: {code: 20001, message: "Can't Afford That."}});
+						return;
+					  }
+					  DB.first("game_unit","SELECT unit_level,next_exp FROM unit_level_up_pattern_m WHERE unit_level_up_pattern_m.unit_level_up_pattern_id=? AND next_exp<=? AND unit_level<=? ORDER BY next_exp DESC LIMIT 1",[baseUnitData.unit_level_up_pattern_id, new_exp, (baseUnit.max_level-1)]).then(function(levelUpInfo){
+						if (!levelUpInfo){
+						  defer.reject({status: 403, result: {code: 20001, message: "Can't Level Up."}});
+						  return;
+						}
+						console.log(levelUpInfo);
+						var new_level = levelUpInfo.unit_level;
+						if (new_exp >= levelUpInfo.next_exp){
+						  new_level = Math.min(baseUnit.max_level,levelUpInfo.unit_level+1);
+						  if (new_level == baseUnit.max_level){
+							new_exp = levelUpInfo.next_exp;
+						  }
+						}
+						DB.first("game_unit","SELECT (U.smile_max - L.smile_diff) as smile,(U.pure_max - L.pure_diff) as pure,  (U.cool_max - L.cool_diff) as cool,  (U.hp_max - L.hp_diff) as hp FROM unit_m as U JOIN unit_level_up_pattern_m as L ON U.unit_level_up_pattern_id = L.unit_level_up_pattern_id WHERE U.unit_id=? AND L.unit_level=?;",[baseUnit.unit_id, new_level]).then(function(newStatsData){
+						  if (newStatsData){
+
+							DB.first("game_unit","SELECT L.skill_level, L.next_exp FROM unit_skill_m as S JOIN unit_skill_level_up_pattern_m as L on S.unit_skill_level_up_pattern_id = L.unit_skill_level_up_pattern_id WHERE S.unit_skill_id=? AND L.next_exp<=? ORDER BY L.next_exp DESC LIMIT 1;",[baseUnitData.default_unit_skill_id, new_skill_exp]).then(function(skillLevelUpData){
+							  if (!skillLevelUpData){ skillLevelUpData = {}; }
+							  var new_skill_level = skillLevelUpData.skill_level || 0;
+							  if (new_skill_level != 0 && new_skill_exp >= skillLevelUpData.next_exp){
+								new_skill_level = new_skill_level = Math.min(8, skillLevelUpData.skill_level+1);
+							  }
+							  DB.run("user","UPDATE unit SET exp=?,next_exp=?,level=?, stat_smile=?, stat_pure=?, stat_cool=?, max_hp=?, unit_skill_level=?, unit_skill_exp=? WHERE unit_owning_user_id=?",[new_exp, levelUpInfo.next_exp,new_level, newStatsData.smile, newStatsData.pure, newStatsData.cool, newStatsData.hp,new_skill_level, new_skill_exp, data.base_owning_unit_user_id]).then(function(){
+								
+								return DB.run("user","DELETE FROM team_slot WHERE unit_owning_user_id IN (" + data.unit_owning_user_ids.join(",") + ");",[]);
+							  }).then(function(){
+								if (baseUnit.rank >= baseUnit.max_rank && new_level >= baseUnit.max_level){
+								  log.verbose("Max Level & Max Rank");
+								  return DB.run("user","UPDATE album SET rank_level_max_flag=1 WHERE user_id=? AND unit_id=?",[baseUnit.unit_id, user_id]).then(function(){});
+								}
+								return true;                            
+							  }).then(function(){
+								return DB.run("user","DELETE FROM sis_equip WHERE unit_owning_user_id IN (" + data.unit_owning_user_ids.join(",") + ");",[]);
+							  }).then(function(){
+								return DB.run("user","UPDATE unit SET removed=1 WHERE unit_owning_user_id IN (" + data.unit_owning_user_ids.join(",") + ");",[]);
+							  }).then(function(){
+								return DB.run("user","UPDATE users SET game_coin=? WHERE user_id=?",[userData.game_coin - TOTAL_COST,user_id]);
+							  }).then(function(){
+								var result = {
+								  before: {
+									unit_owning_user_id: data.base_owning_unit_user_id,
+									unit_id:baseUnit.unit_id,
+									exp: baseUnit.exp,
+									next_exp: baseUnit.next_exp,
+									level: baseUnit.level,
+									max_level: baseUnit.max_level,
+									rank: baseUnit.rank,
+									max_rank: baseUnit.max_rank,
+									love: baseUnit.love,
+									max_love: baseUnit.max_love,
+									unit_skill_exp: baseUnit.unit_skill_exp,
+									unit_skill_level: baseUnit.unit_skill_level,
+									max_hp: baseUnit.max_hp,
+									unit_removable_skill_capacity: baseUnit.unit_removable_skill_capacity,
+									favorite_flag: baseUnit.favorite_flag==1,
+									is_rank_max: baseUnit.rank >= baseUnit.max_rank,
+									is_love_max: baseUnit.love >= baseUnit.max_love,
+									is_level_max: baseUnit.level >= baseUnit.max_level
+								  },
+								  after: {
+									unit_owning_user_id: data.base_owning_unit_user_id,
+									unit_id:baseUnit.unit_id,
+									exp: new_exp,
+									next_exp: levelUpInfo.next_exp,
+									level: new_level,
+									max_level: baseUnit.max_level,
+									rank: baseUnit.rank,
+									max_rank: baseUnit.max_rank,
+									love: baseUnit.love,
+									max_love: baseUnit.max_love,
+									unit_skill_exp: new_skill_exp,
+									unit_skill_level: new_skill_level,
+									max_hp: newStatsData.hp,
+									unit_removable_skill_capacity: baseUnit.unit_removable_skill_capacity,
+									favorite_flag: baseUnit.favorite_flag==1,
+									is_rank_max: baseUnit.rank >= baseUnit.max_rank,
+									is_love_max: baseUnit.love >= baseUnit.max_love,
+									is_level_max: new_level >= baseUnit.max_level
+								  },
+								  before_user_info: {
+									level: userData.level,
+									exp: userData.exp,
+									previous_exp: 0,
+									next_exp: (3*userData.level) + (3*(userData.level-1)),
+									game_coin: userData.game_coin,
+									sns_coin: userData.sns_coin,
+									social_point: userData.social_point,
+									unit_max: userData.unit_max,
+									energy_max: userData.energy_max,
+									friend_max: userData.friend_max,
+									tutorial_state: userData.tutorial_state,
+									energy_full_time:  COMMON.unixToDateString(userData.energy_full_time),
+									over_max_energy: userData.over_max_energy,
+									unlock_random_live_muse: 1,
+									unlock_random_live_aqours: 1
+								  },
+								  after_user_info: {
+									level: userData.level,
+									exp: userData.exp,
+									previous_exp: 0,
+									next_exp: (3*userData.level) + (3*(userData.level-1)),
+									game_coin: userData.game_coin - TOTAL_COST,
+									sns_coin: userData.sns_coin,
+									social_point: userData.social_point,
+									unit_max: userData.unit_max,
+									energy_max: userData.energy_max,
+									friend_max: userData.friend_max,
+									tutorial_state: userData.tutorial_state,
+									energy_full_time:  COMMON.unixToDateString(userData.energy_full_time),
+									over_max_energy: userData.over_max_energy,
+									unlock_random_live_muse: 1,
+									unlock_random_live_aqours: 1
+								  },
+								  use_game_coin: TOTAL_COST,
+								  evolution_setting_id: (successType==1?1:(successType==2?3:2)),
+								  bonus_value: successType,
+								  open_subscenario_id: null,
+								  unit_removable_skill: {},
+								  get_exchange_point_list: []                      
+								}
+								console.log(result);
+								console.log(successType);
+								modules.unit.removableskillinfo(data).then(function(removableSkillInfo){
+								  result.unit_removable_skill.owning_info = removableSkillInfo.result.owning_info;
+								  defer.resolve({status: 200, result: result});
+								}).catch(function(e){
+								  console.log(e);
+								  defer.reject({status: 403, result: {code: 20001, message: "Server Error? [11]"}});
+								});
+
+							  }).catch(function(e){
+								defer.reject({status: 403, result: {code: 20001, message: "Server Error [8]"}});
+							  })
+							}).catch(function(e){
+							  console.log(e);
+							  defer.reject({status: 403, result: {code: 20001, message: "Server Error [9]"}});
+							});
+						  }else{
+							defer.reject({status: 403, result: {code: 20001, message: "Can't Level Up. [Something Broke]"}});
+						  }                    
+						}).catch(function(e){
+						  console.log(e);
+						  defer.reject({status: 403, result: {code: 20001, message: "Server Error [10]"}});
+						});              
+					  }).catch(function(e){
+						console.log(e);
+						defer.reject({status: 403, result: {code: 20001, message: "Server Error [6]"}});
+					  });
+					
+					}).catch(function(e){
+					  console.log(e);
+					  defer.reject({status: 403, result: {code: 20001, message: "Server Error [6]"}});
+					});
+				  });
+				}).catch(function(e){
+				  console.log(e);
+				  defer.reject({status: 403, result: {code: 20001, message: "Server Error [3]"}});
+				});  ;
+			  }).catch(function(e){
+				console.log(e);
+				defer.reject({status: 403, result: {code: 20001, message: "Server Error [2]"}});
+			  });  
+			}).catch(function(e){
+			  defer.reject({status: 403, result: {code: 20001, message: "Server Error [5]"}});
+			});
+		  }).catch(function(e){
+			console.log(e);
+			defer.reject({status: 403, result: {code: 20001, message: "Server Error [1]"}});
+		  });
 		}).catch(function(e){
-			defer.reject(e);
+		  defer.reject(e);
 		});
 		return defer.promise;
 	},
@@ -606,7 +867,6 @@
 										  }).then(function(){
 											return DB.run("user","UPDATE album SET rank_max_flag=1 WHERE unit_id=? AND user_id=?",[mainData.unit_id,user_id]);
 										  }).then(function(){
-											  
 											var result = {
 											  before: {
 												unit_owning_user_id: unit_main,
@@ -695,8 +955,6 @@
 												defer.resolve({status: 200, result: result});
 												
 											});
-
-											
 										  }).catch(function(e){
 											console.log(e);
 											defer.reject({status: 403, result: {code: 20001, message: "Server Error [unit.rankup.6]"}});
