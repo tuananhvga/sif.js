@@ -32,7 +32,7 @@
 						is_love_max: u.love>=u.max_love,
 						is_level_max: u.level>=u.max_level,
 						is_skill_level_max: (u.unit_skill_level==0||u.unit_sill_level>=8),
-						insert_date: COMMON.unixToDateString(Math.floor(Date.now()/1000))
+						insert_date: "2016-01-01 00:00:00"//COMMON.unixToDateString(Math.floor(Date.now()/1000))
 					});
 				}
 				defer.resolve({status:200, result: list});
@@ -1012,6 +1012,4 @@
 		});
 		return defer.promise;
 	}
-	
-	
 }

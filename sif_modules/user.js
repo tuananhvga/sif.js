@@ -99,6 +99,41 @@
 			defer.reject(e);
 		});
 		return defer.promise;
+	},
+	addunitmax: function(data){
+		var defer = q.defer();
+		log.verbose(data);
+		COMMON.checkLogin(data._headers["user-id"], data._headers.authorize.token).then(function(user_id){
+			DB.first("user","SELECT unit_max, sns_coin FROM users WHERE user_id=?",[user_id]).then(function(userData){
+				if (userData.sns_coin >= 1){
+					var newMax = Math.min(1000, userData.unit_max + 4);
+					if (newMax > userData.unit_max){
+						DB.run("user","UPDATE users SET unit_max=?, sns_coin=sns_coin-1 WHERE user_id=?",[newMax,user_id]).then(function(){
+							defer.resolve({status: 200, result: {
+								before_unit_max: userData.unit_max,
+								after_unit_max: newMax,
+								used_loveca: 1
+							}});
+						});
+					}else{
+						defer.resolve({status: 200, result: {
+							before_unit_max: userData.unit_max,
+							after_unit_max: userData.unit_max,
+							used_loveca: 0
+						}});	
+					}
+				}else{
+					defer.resolve({status: 200, result: {
+						before_unit_max: userData.unit_max,
+						after_unit_max: userData.unit_max,
+						used_loveca: 0
+					}});
+				}
+			});
+		}).catch(function(e){
+			defer.reject(e);
+		});
+		return defer.promise;
 	}
 	
 }
