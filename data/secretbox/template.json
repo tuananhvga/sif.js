@@ -1,0 +1,66 @@
+[
+  {
+    "id": "ur",
+    "value": [
+      {
+        "id": "boosted",
+        "value": [],
+        "weight": 4
+      },
+      {
+        "id": "normal",
+        "value": [],
+        "weight": 6
+      }
+    ],
+    "weight": 1
+  },
+  {
+    "id": "ssr",
+    "value": [
+      {
+        "id": "boosted",
+        "value": [],
+        "weight": 4
+      },
+      {
+        "id": "normal",
+        "value": [],
+        "weight": 6
+      }
+    ],
+    "weight": 4
+  },
+  {
+    "id": "sr",
+    "value": [
+      {
+        "id": "boosted",
+        "value": [],
+        "weight": 4
+      },
+      {
+        "id": "normal",
+        "value": [
+          {
+            "id": "event",
+            "value": [],
+            "weight": 1
+          },
+          {
+            "id": "normal",
+            "value": [],
+            "weight": 5
+          }
+        ],
+        "weight": 6
+      }
+    ],
+    "weight": 15
+  },
+  {
+    "id": "r",
+    "value": [],
+    "weight": 80
+  }
+]
