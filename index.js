@@ -52,20 +52,21 @@ var modules = {}
 
 fs.readdirSync("./sif_modules").forEach(function(m){
 	if (m.endsWith(".js")){
-		log.verbose("Loading Module: " + m);
+		log.verbose("- Module: " + m.replace(/\.js$/,""));
 		m = m.replace(/\.js$/,"");
 		eval("modules." + m.toLowerCase() + " = " + fs.readFileSync("./sif_modules/"+m+".js",{encoding: "utf-8"}));
 		
 		for (var key in modules[m.toLowerCase()]) {
 			if (!modules[m.toLowerCase()].hasOwnProperty(key)) continue;
+            if (key == "COMMON") continue;
 			if (key == key.toLowerCase()){
 				if (typeof modules[m.toLowerCase()][key] == "function"){
-					log.verbose(" - Action: " + key);
+					log.verbose("  - Action: " + key);
 				}else{
-					log.warn(" - Unusable Action [Not Function]: " + key);
+					log.warn("  - Unusable Action [Not Function]: " + key);
 				}
 			}else{
-				log.warn(" - Unusable Action [Not Lowercase]: " + key);
+				log.warn("  - Unusable Action [Not Lowercase]: " + key);
 			}
 		}		
 	}
