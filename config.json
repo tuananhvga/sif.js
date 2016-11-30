@@ -1,0 +1,11 @@
+{
+    "server": {
+        "port": 8081
+    },
+    "game": {
+        "gacha": {
+            "free_gacha_delay": 3600000
+        }
+    
+    }
+}

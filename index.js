@@ -8,6 +8,7 @@ const DB = require("./libs/db.sqlite.js");
 
 const _INFO = require("./package.json");
 
+const CONFIG = require("./config.json");
 
 var AUTH_KEYS = [];
 
@@ -59,6 +60,8 @@ fs.readdirSync("./sif_modules").forEach(function(m){
 		for (var key in modules[m.toLowerCase()]) {
 			if (!modules[m.toLowerCase()].hasOwnProperty(key)) continue;
             if (key == "COMMON") continue;
+            if (key == "INIT") continue; 
+            if (key == "COMMAND") continue; 
 			if (key == key.toLowerCase()){
 				if (typeof modules[m.toLowerCase()][key] == "function"){
 					log.verbose("  - Action: " + key);
@@ -68,7 +71,13 @@ fs.readdirSync("./sif_modules").forEach(function(m){
 			}else{
 				log.warn("  - Unusable Action [Not Lowercase]: " + key);
 			}
-		}		
+		}
+        if (typeof modules[m.toLowerCase()]["INIT"] === "function"){
+            if (typeof modules[m.toLowerCase()]["INIT"] == "function"){
+                log.verbose("  - Running INIT for " + m.toLowerCase());
+                modules[m.toLowerCase()]["INIT"].apply(modules[m.toLowerCase()]);
+            }
+        }
 	}
 });
 
@@ -293,8 +302,8 @@ Array.prototype.uniqueValues = function(){
 }
 
 DB.init().then(function(){
-	server.listen(8081, function(){
-		log.info("Started Server on Port 8081");
+	server.listen(CONFIG.server.port, function(){
+		log.info("Started Server on Port " + CONFIG.server.port);
 	});
 }).catch(function(e){
 	log.fatal(e);
@@ -375,6 +384,15 @@ function readlineSetup(){
 			}
 			
 			default: {
+				if (c.length >= 2){
+                    if (modules[c[0].toLowerCase()] &&
+                        modules[c[0].toLowerCase()].COMMAND &&
+                        typeof modules[c[0].toLowerCase()].COMMAND[c[1].toLowerCase()] === "function"){
+                            var _c = c.splice(0,2);
+                            modules[_c[0].toLowerCase()].COMMAND[_c[1].toLowerCase()].apply(modules[_c[0].toLowerCase()],c);
+							return;
+                        }
+                }
 				log.error("Invalid Command");
 			}
 		}
