@@ -85,7 +85,7 @@ function handleRequest(data, finish, currentResponse){
 		if (typeof next.module === "string" && typeof modules[next.module.toLowerCase()] == "object"){
 			if (typeof next.action === "string" && typeof modules[next.module.toLowerCase()][next.action.toLowerCase()] === "function"){
 				
-				modules[next.module.toLowerCase()][next.action.toLowerCase()](next).then(function(result){
+				modules[next.module.toLowerCase()][next.action.toLowerCase()].apply(modules[next.module.toLowerCase()],[next]).then(function(result){
 					result.timeStamp = Math.floor(Date.now()/1000);
 					result.commandNum = false//`${next.module}/${next.action}`;
 					currentResponse.push({result: result.result, status: result.status, commandNum: result.commandNum, timeStamp: result.timeStamp});
@@ -216,7 +216,7 @@ var server = http.createServer(function(request,response){
 						if (typeof next.module === "string" && typeof modules[next.module] == "object"){
 							if (typeof next.action === "string" && typeof modules[next.module][next.action] === "function"){
 								console.log(next.module, next.action);
-								modules[next.module][next.action](next).then(function(result){
+								modules[next.module][next.action].apply(modules[next.module],[next]).then(function(result){
 
 								
 							
