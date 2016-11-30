@@ -25,6 +25,7 @@ function buildUserDb(){
 		{"tableName": "live_progress", "version": 0},
 		{"tableName": "sis_equip", "version": 0},
 		{"tableName": "sis_owning", "version": 0},
+		{"tableName": "item", "version": 0},
 	];
 	
 	log.verbose("Preparing User Database");
@@ -47,8 +48,8 @@ function buildUserDb(){
 						switch(version){
 							case 0: {
 								querys.push("DROP TABLE IF EXISTS `users`;");
-								querys.push("CREATE TABLE `users`( `user_id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `login_key` TEXT NOT NULL UNIQUE, `login_passwd` TEXT NOT NULL, `name` TEXT DEFAULT 'User', `token` TEXT, `level` INTEGER DEFAULT 1, `exp` INTEGER DEFAULT 0, `game_coin` INTEGER DEFAULT 0, `sns_coin` INTEGER DEFAULT 0, `free_sns_coin` INTEGER DEFAULT 0, `paid_sns_coin` INTEGER DEFAULT 0, `social_point` INTEGER DEFAULT 0, `unit_max` INTEGER DEFAULT 120, `energy_max` INTEGER DEFAULT 25, `energy_full_time` INTEGER DEFAULT 0, `over_max_energy` INTEGER DEFAULT 0, `friend_max` INTEGER DEFAULT 0, `insert_date` INTEGER DEFAULT 0, `tutorial_state` INTEGER DEFAULT 0, `partner` INTEGER DEFAULT 0, `introduction` TEXT DEFAULT 'Hello!', `background_id` INTEGER DEFAULT 1, `award_id` INTEGER DEFAULT 1, `transfer_code` TEXT);");
-								version = 4;
+								querys.push("CREATE TABLE `users`( `user_id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, `login_key` TEXT NOT NULL UNIQUE, `login_passwd` TEXT NOT NULL, `name` TEXT DEFAULT 'User', `token` TEXT, `level` INTEGER DEFAULT 1, `exp` INTEGER DEFAULT 0, `game_coin` INTEGER DEFAULT 0, `sns_coin` INTEGER DEFAULT 0, `free_sns_coin` INTEGER DEFAULT 0, `paid_sns_coin` INTEGER DEFAULT 0, `social_point` INTEGER DEFAULT 0, `unit_max` INTEGER DEFAULT 120, `energy_max` INTEGER DEFAULT 25, `energy_full_time` INTEGER DEFAULT 0, `over_max_energy` INTEGER DEFAULT 0, `friend_max` INTEGER DEFAULT 0, `insert_date` INTEGER DEFAULT 0, `tutorial_state` INTEGER DEFAULT 0, `partner` INTEGER DEFAULT 0, `introduction` TEXT DEFAULT 'Hello!', `background_id` INTEGER DEFAULT 1, `award_id` INTEGER DEFAULT 1, `transfer_code` TEXT, `secretbox_gauge` INTEGER DEFAULT 0,`last_free_muse_gacha` INTEGER DEFAULT 0,`last_free_aqours_gacha` INTEGER DEFAULT 0);");
+								version = 6;
 								break;
 							}
 							case 1:{
@@ -63,6 +64,15 @@ function buildUserDb(){
 							case 3:{
 								querys.push("ALTER TABLE `users` ADD COLUMN `transfer_code` TEXT;");
 								version = 4;
+							}
+							case 4:{
+								querys.push("ALTER TABLE `users` ADD COLUMN `secretbox_gauge` INTEGER DEFAULT 0;");
+								version = 5;
+							}
+							case 5:{
+								querys.push("ALTER TABLE `users` ADD COLUMN `last_free_muse_gacha` INTEGER DEFAULT 0;");
+								querys.push("ALTER TABLE `users` ADD COLUMN `last_free_aqours_gacha` INTEGER DEFAULT 0;");
+								version = 6;
 							}
 
 						}
@@ -184,6 +194,20 @@ function buildUserDb(){
 							case 0: {
 								querys.push("DROP TABLE IF EXISTS `sis_equip`;");
 								querys.push("CREATE TABLE `sis_equip` (`unit_owning_user_id` INTEGER,`sis_id` INTEGER, PRIMARY KEY(unit_owning_user_id,sis_id));");
+								version = 1;
+								break;
+							}
+						}
+						if (rows[i].version != version)
+						querys.push("INSERT OR REPLACE INTO meta (tableName, version) VALUES ('"+table+"',"+version+");");
+						
+						break;
+					}
+					case "item":{
+						switch(version){
+							case 0: {
+								querys.push("DROP TABLE IF EXISTS `item`;");
+								querys.push("CREATE TABLE `item` (`user_id` INTEGER,`item_id` INTEGER, `amount` INTEGER, PRIMARY KEY(user_id,item_id));");
 								version = 1;
 								break;
 							}

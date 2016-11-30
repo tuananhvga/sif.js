@@ -122,7 +122,34 @@ WHERE unit_id = ? AND clevel.unit_level = ? AND plevel.unit_level=?
 		
 		return defer.promise;
 	},	
-	
+	userInfo: function(user_id){
+        var defer = q.defer();
+        DB.first("user","SELECT level, exp, game_coin, sns_coin, free_sns_coin, paid_sns_coin, social_point, unit_max, energy_max, friend_max, tutorial_state, secretbox_gauge, last_free_aqours_gacha, last_free_muse_gacha, (SELECT count(*) FROM unit WHERE owner_id=users.user_id AND removed=0) as unit_count FROM users WHERE user_id=?",[user_id]).then(function(u){
+            if (!u){ defer.reject("No User"); }
+            defer.resolve({
+                level: u.level,
+                exp: u.exp,
+                previous_exp: 0,
+                next_exp: (3*u.level) + (3*(u.level-1)),
+                game_coin: u.game_coin,
+                sns_coin: u.sns_coin,
+                free_sns_coin: u.free_sns_coin,
+                paid_sns_coin: u.paid_sns_coin,
+                social_point: u.social_point,
+                unit_max: u.unit_max,
+                current_energy: u.energy_max,
+                energy_max: u.energy_max,
+                friend_max: u.friend_max,
+                tutorial_state: u.tutorial_state,
+                unit_count: u.unit_count,
+                secretbox_gauge: u.secretbox_gauge,
+				last_free_muse_gacha: u.last_free_muse_gacha,
+				last_free_aqours_gacha: u.last_free_aqours_gacha
+            });
+        }).catch(defer.reject);
+        return defer.promise;
+        
+    },
 	copy: function(o) {
 	   var output, v, key;
 	   output = Array.isArray(o) ? [] : {};
